@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "emptyuikit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sereivoanyong/EmptyUIKit",
+      "state" : {
+        "branch" : "main",
+        "revision" : "43b5a84dcab20a568b53d5600ed74fcff7735c95"
+      }
+    }
+  ],
+  "version" : 2
+}
