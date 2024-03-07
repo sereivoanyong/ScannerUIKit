@@ -22,6 +22,8 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
 
   public let session: AVCaptureSession = AVCaptureSession()
 
+  open private(set) var isSessionRunningOnMain: Bool = false
+
   private var scannerView: ScannerView!
 
   open private(set) var scannerFrameConstraints: [NSLayoutConstraint] = []
@@ -284,12 +286,14 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   // MARK: Actions
 
   open func startRunningSession() {
+    isSessionRunningOnMain = true
     sessionQueue.async { [weak session] in
       session?.startRunning()
     }
   }
 
   open func stopRunningSession() {
+    isSessionRunningOnMain = false
     sessionQueue.async { [weak session] in
       session?.stopRunning()
     }
@@ -305,9 +309,7 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
     scannerView.metadataOutput.setMetadataObjectsDelegate(nil, queue: nil)
   }
 
-  open func didOutput(_ metadataObject: AVMetadataObject) -> Bool {
-    print(metadataObject)
-    return true
+  open func didOutput(_ metadataObject: AVMetadataObject) {
   }
 
   @objc private func dismiss(_ sender: UIBarButtonItem) {
@@ -340,9 +342,9 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
     }
 
     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    let isValid = didOutput(metadataObject)
-    if isValid {
-      stopOutputtingMetadataObjects()
+    if isSessionRunningOnMain {
+      stopRunningSession()
+      didOutput(metadataObject)
     }
   }
 
