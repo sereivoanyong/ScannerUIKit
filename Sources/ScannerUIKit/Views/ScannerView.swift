@@ -17,27 +17,17 @@ final class ScannerView: AVCaptureVideoPreviewView {
 
   let device: AVCaptureDevice
   let deviceInput: AVCaptureDeviceInput
-  let metadataOutput: AVCaptureMetadataOutput  
 
-  private var viewOfInterestFrameObservation: NSKeyValueObservation?
-
-  weak var viewOfInterest: UIView? {
-    didSet {
-      viewOfInterestFrameObservation = viewOfInterest?.observe(\.frame, options: [.initial, .new]) { [unowned self] viewOfInterest, _ in
-        metadataOutput.rectOfInterest = rectOfInterest(of: viewOfInterest)
-      }
-    }
-  }
+  weak var viewOfInterest: UIView?
 
   private var torchButton: UIButton!
   private var torchObservations: [NSKeyValueObservation] = []
 
   // MARK: Init
 
-  init(frame: CGRect, device: AVCaptureDevice, deviceInput: AVCaptureDeviceInput, metadataOutput: AVCaptureMetadataOutput) {
+  init(frame: CGRect, device: AVCaptureDevice, deviceInput: AVCaptureDeviceInput) {
     self.device = device
     self.deviceInput = deviceInput
-    self.metadataOutput = metadataOutput
     super.init(frame: frame)
 
     videoGravity = .resizeAspectFill
@@ -52,16 +42,6 @@ final class ScannerView: AVCaptureVideoPreviewView {
   
   required init?(coder: NSCoder) {
     fatalError("init(coder:) has not been implemented")
-  }
-
-  // MARK: Lifecycle
-
-  override func layoutSubviews() {
-    super.layoutSubviews()
-
-    if let viewOfInterest {
-      metadataOutput.rectOfInterest = rectOfInterest(of: viewOfInterest)
-    }
   }
 
   // MARK: Public
@@ -127,16 +107,6 @@ final class ScannerView: AVCaptureVideoPreviewView {
       print(error)
     }
   }
-
-  // MARK: Private
-
-  private func untranslatedRectOfInterest(of view: UIView) -> CGRect {
-    return (view.superview ?? view).convert(view.frame, to: self)
-  }
-
-  private func rectOfInterest(of view: UIView) -> CGRect {
-    return layer.metadataOutputRectConverted(fromLayerRect: untranslatedRectOfInterest(of: view))
-  }
 }
 
 // MARK: - ScannerCutoutViewDelegate
@@ -145,9 +115,8 @@ extension ScannerView: ScannerCutoutViewDelegate {
 
   func cutoutRect(for scannerCutoutView: ScannerCutoutView) -> CGRect {
     if let viewOfInterest {
-      return untranslatedRectOfInterest(of: viewOfInterest)
-    } else {
-      return frame
+      return viewOfInterest.convert(viewOfInterest.bounds, to: self)
     }
+    return scannerCutoutView.bounds
   }
 }

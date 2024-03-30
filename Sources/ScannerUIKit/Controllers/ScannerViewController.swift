@@ -24,6 +24,8 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
 
   open private(set) var isSessionRunningOnMain: Bool = false
 
+  private let metadataOutput = AVCaptureMetadataOutput()
+
   private let metadataObjectsQueue = DispatchQueue(label: "com.sereivoanyong.scanneruikit.metadataobjectsqueue")
 
   private let metadataObjectsOutputSemaphore = DispatchSemaphore(value: 1)
@@ -148,18 +150,23 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   open override func viewDidLayoutSubviews() {
     super.viewDidLayoutSubviews()
 
-    if let scannerView, let connection = scannerView.layer.connection, connection.isVideoOrientationSupported {
-      switch UIDevice.current.orientation {
-      case .portrait:
-        connection.videoOrientation = .portrait
-      case .landscapeRight:
-        connection.videoOrientation = .landscapeLeft
-      case .landscapeLeft:
-        connection.videoOrientation = .landscapeRight
-      case .portraitUpsideDown:
-        connection.videoOrientation = .portraitUpsideDown
-      default:
-        connection.videoOrientation = .portrait
+    if let scannerView {
+      if let scannerInterestView {
+        metadataOutput.rectOfInterest = scannerView.layer.metadataOutputRectConverted(fromLayerRect: scannerInterestView.convert(scannerInterestView.bounds, to: scannerView))
+      }
+      if let connection = scannerView.layer.connection, connection.isVideoOrientationSupported {
+        switch UIDevice.current.orientation {
+        case .portrait:
+          connection.videoOrientation = .portrait
+        case .landscapeRight:
+          connection.videoOrientation = .landscapeLeft
+        case .landscapeLeft:
+          connection.videoOrientation = .landscapeRight
+        case .portraitUpsideDown:
+          connection.videoOrientation = .portraitUpsideDown
+        default:
+          connection.videoOrientation = .portrait
+        }
       }
     }
   }
@@ -219,7 +226,14 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
 
     let result = configureSession()
     switch result {
-    case .success((let device, let deviceInput, let metadataOutput)):
+    case .success((let device, let deviceInput)):
+      do {
+        scannerView = ScannerView(frame: view.bounds, device: device, deviceInput: deviceInput)
+        scannerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        scannerView.session = session
+        view.addSubview(scannerView)
+      }
+
       do {
         scannerInterestView = UIView()
         view.addSubview(scannerInterestView)
@@ -247,20 +261,14 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
         NSLayoutConstraint.activate(scannerFrameConstraints)
       }
 
-      do {
-        scannerView = ScannerView(frame: view.bounds, device: device, deviceInput: deviceInput, metadataOutput: metadataOutput)
-        scannerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        scannerView.session = session
-        scannerView.viewOfInterest = scannerInterestView
-        view.insertSubview(scannerView, at: 0)
-      }
+      scannerView.viewOfInterest = scannerInterestView
 
     case .failure(let error):
       currentError = error
     }
   }
 
-  private func configureSession() -> Result<(AVCaptureDevice, AVCaptureDeviceInput, AVCaptureMetadataOutput), ScannerError> {
+  private func configureSession() -> Result<(AVCaptureDevice, AVCaptureDeviceInput), ScannerError> {
     guard let device = AVCaptureDevice.default(for: .video) else {
       return .failure(.noVideoDevice)
     }
@@ -280,15 +288,14 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
     }
 
     // Output
-    let metadataOutput = AVCaptureMetadataOutput()
     if session.canAddOutput(metadataOutput) {
       session.addOutput(metadataOutput)
+
+      metadataOutput.setMetadataObjectsDelegate(self, queue: metadataObjectsQueue)
     }
-    metadataOutput.metadataObjectTypes = supportedMetadataObjectTypes
-    metadataOutput.setMetadataObjectsDelegate(self, queue: metadataObjectsQueue)
 
     session.commitConfiguration()
-    return .success((device, deviceInput, metadataOutput))
+    return .success((device, deviceInput))
   }
 
   // MARK: Actions
@@ -308,13 +315,11 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   }
 
   open func startOutputtingMetadataObjects() {
-    guard let scannerView else { return }
-    scannerView.metadataOutput.setMetadataObjectsDelegate(self, queue: .main)
+    metadataOutput.metadataObjectTypes = supportedMetadataObjectTypes
   }
 
   open func stopOutputtingMetadataObjects() {
-    guard let scannerView else { return }
-    scannerView.metadataOutput.setMetadataObjectsDelegate(nil, queue: nil)
+    metadataOutput.metadataObjectTypes = []
   }
 
   open func didOutput(_ metadataObjects: [AVMetadataObject]) {
@@ -341,8 +346,6 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   // MARK: - AVCaptureMetadataOutputObjectsDelegate
 
   open func metadataOutput(_ metadataOutput: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-    guard metadataOutput.metadataObjectsDelegate != nil else { return }
-
     if metadataObjectsOutputSemaphore.wait(timeout: .now()) == .success {
       DispatchQueue.main.async { [weak self] in
         guard let self else { return }
