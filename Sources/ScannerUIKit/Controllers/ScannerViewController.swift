@@ -24,6 +24,10 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
 
   open private(set) var isSessionRunningOnMain: Bool = false
 
+  private let metadataObjectsQueue = DispatchQueue(label: "com.sereivoanyong.scanneruikit.metadataobjectsqueue")
+
+  private let metadataObjectsOutputSemaphore = DispatchSemaphore(value: 1)
+
   private var scannerView: ScannerView!
 
   open private(set) var scannerFrameConstraints: [NSLayoutConstraint] = []
@@ -46,6 +50,8 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
       }
     }
   }
+
+  public let feedbackGenerator = UINotificationFeedbackGenerator()
 
   public let contentLayoutGuide = UILayoutGuide()
 
@@ -109,6 +115,8 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
         view.safeAreaLayoutGuide.trailingAnchor.constraint(equalTo: contentLayoutGuide.trailingAnchor),
       ])
     }
+
+    feedbackGenerator.prepare()
 
     configure()
   }
@@ -277,7 +285,7 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
       session.addOutput(metadataOutput)
     }
     metadataOutput.metadataObjectTypes = supportedMetadataObjectTypes
-    metadataOutput.setMetadataObjectsDelegate(self, queue: .main)
+    metadataOutput.setMetadataObjectsDelegate(self, queue: metadataObjectsQueue)
 
     session.commitConfiguration()
     return .success((device, deviceInput, metadataOutput))
@@ -309,7 +317,7 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
     scannerView.metadataOutput.setMetadataObjectsDelegate(nil, queue: nil)
   }
 
-  open func didOutput(_ metadataObject: AVMetadataObject) {
+  open func didOutput(_ metadataObjects: [AVMetadataObject]) {
   }
 
   @objc private func dismiss(_ sender: UIBarButtonItem) {
@@ -330,21 +338,17 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
     }
   }
 
-  // MARK: - AVCaptureMetadataOutputObjectsDelegate AVCaptureMetadataOutputObjectsDelegate {
+  // MARK: - AVCaptureMetadataOutputObjectsDelegate
 
   open func metadataOutput(_ metadataOutput: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-    guard
-      metadataOutput.metadataObjectsDelegate != nil,
-      let metadataObject = metadataObjects.first,
-      let metadataObject = scannerView.layer.transformedMetadataObject(for: metadataObject)
-    else {
-      return
-    }
+    guard metadataOutput.metadataObjectsDelegate != nil else { return }
 
-    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    if isSessionRunningOnMain {
-      stopRunningSession()
-      didOutput(metadataObject)
+    if metadataObjectsOutputSemaphore.wait(timeout: .now()) == .success {
+      DispatchQueue.main.async { [weak self] in
+        guard let self else { return }
+        didOutput(metadataObjects)
+        metadataObjectsOutputSemaphore.signal()
+      }
     }
   }
 
