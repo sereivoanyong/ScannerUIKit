@@ -26,6 +26,8 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
 
   private let metadataOutput = AVCaptureMetadataOutput()
 
+  private var isMetadataOuputOutputting: Bool = true
+
   private let metadataObjectsQueue = DispatchQueue(label: "com.sereivoanyong.scanneruikit.metadataobjectsqueue")
 
   private let metadataObjectsOutputSemaphore = DispatchSemaphore(value: 1)
@@ -292,6 +294,9 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
       session.addOutput(metadataOutput)
 
       metadataOutput.setMetadataObjectsDelegate(self, queue: metadataObjectsQueue)
+      if isMetadataOuputOutputting {
+        metadataOutput.metadataObjectTypes = supportedMetadataObjectTypes
+      }
     }
 
     session.commitConfiguration()
@@ -321,13 +326,18 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   }
 
   open func startOutputtingMetadataObjects() {
-    metadataOutput.metadataObjectTypes = supportedMetadataObjectTypes
+    isMetadataOuputOutputting = true
+    // Fix flickering
+    if metadataOutput.metadataObjectTypes != supportedMetadataObjectTypes {
+      metadataOutput.metadataObjectTypes = supportedMetadataObjectTypes
+    }
 #if DEBUG
     print("Metadata output started outputting")
 #endif
   }
 
   open func stopOutputtingMetadataObjects() {
+    isMetadataOuputOutputting = false
     metadataOutput.metadataObjectTypes = []
 #if DEBUG
     print("Metadata output stopped outputting")
