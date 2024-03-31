@@ -305,6 +305,9 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
     sessionQueue.async { [weak session] in
       session?.startRunning()
     }
+#if DEBUG
+    print("Session started running")
+#endif
   }
 
   open func stopRunningSession() {
@@ -312,14 +315,23 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
     sessionQueue.async { [weak session] in
       session?.stopRunning()
     }
+#if DEBUG
+    print("Session stopped running")
+#endif
   }
 
   open func startOutputtingMetadataObjects() {
     metadataOutput.metadataObjectTypes = supportedMetadataObjectTypes
+#if DEBUG
+    print("Metadata output started outputting")
+#endif
   }
 
   open func stopOutputtingMetadataObjects() {
     metadataOutput.metadataObjectTypes = []
+#if DEBUG
+    print("Metadata output stopped outputting")
+#endif
   }
 
   open func didOutput(_ metadataObjects: [AVMetadataObject]) {
@@ -346,12 +358,21 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   // MARK: - AVCaptureMetadataOutputObjectsDelegate
 
   open func metadataOutput(_ metadataOutput: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-    if metadataObjectsOutputSemaphore.wait(timeout: .now()) == .success {
+    guard !metadataObjects.isEmpty else { return }
+    switch metadataObjectsOutputSemaphore.wait(timeout: .now()) {
+    case .success:
+      print("Metadata output output and processed \(metadataObjects.count)")
       DispatchQueue.main.async { [weak self] in
         guard let self else { return }
         didOutput(metadataObjects)
         metadataObjectsOutputSemaphore.signal()
       }
+    case .timedOut:
+#if DEBUG
+      print("Metadata output output \(metadataObjects.count) but failed to process")
+#else
+      break
+#endif
     }
   }
 
