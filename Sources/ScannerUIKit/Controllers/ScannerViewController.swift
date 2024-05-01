@@ -294,9 +294,7 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
       session.addOutput(metadataOutput)
 
       metadataOutput.setMetadataObjectsDelegate(self, queue: metadataObjectsQueue)
-      if isMetadataOuputOutputting {
-        metadataOutput.metadataObjectTypes = supportedMetadataObjectTypes
-      }
+      metadataOutput.setMetadataObjectTypesIfAvailable(supportedMetadataObjectTypes)
     }
 
     session.commitConfiguration()
@@ -328,9 +326,7 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   open func startOutputtingMetadataObjects() {
     isMetadataOuputOutputting = true
     // Fix flickering
-    if metadataOutput.metadataObjectTypes != supportedMetadataObjectTypes {
-      metadataOutput.metadataObjectTypes = supportedMetadataObjectTypes
-    }
+    metadataOutput.setMetadataObjectTypesIfAvailable(supportedMetadataObjectTypes)
 #if DEBUG
     print("Metadata output started outputting")
 #endif
@@ -420,5 +416,19 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
         emptyView.message = error.localizedDescription
       }
     }
+  }
+}
+
+extension AVCaptureMetadataOutput {
+
+  func setMetadataObjectTypesIfAvailable(_ metadataObjectTypes: [AVMetadataObject.ObjectType]) {
+    let availableMetadataObjectTypes = availableMetadataObjectTypes
+    let metadataObjectTypesToSet = metadataObjectTypes.filter { availableMetadataObjectTypes.contains($0) }
+#if DEBUG
+    if metadataObjectTypesToSet.count < metadataObjectTypes.count {
+      print("\(Set(metadataObjectTypes).subtracting(metadataObjectTypesToSet).map(\.rawValue)) not supported.")
+    }
+#endif
+    self.metadataObjectTypes = metadataObjectTypesToSet
   }
 }
