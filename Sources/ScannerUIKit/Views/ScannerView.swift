@@ -81,18 +81,14 @@ final class ScannerView: AVCaptureVideoPreviewView {
   }
 
   private func makeTorchImage(for device: AVCaptureDevice) -> UIImage? {
-    if #available(iOS 13.0, *) {
-      if device.isTorchAvailable {
-        if device.isTorchActive {
-          return UIImage(systemName: "flashlight.on.fill")
-        } else {
-          return UIImage(systemName: "flashlight.off.fill")
-        }
+    if device.isTorchAvailable {
+      if device.isTorchActive {
+        return UIImage(systemName: "flashlight.on.fill")
       } else {
-        return UIImage(systemName: "flashlight.slash")
+        return UIImage(systemName: "flashlight.off.fill")
       }
     } else {
-      return nil
+      return UIImage(systemName: "flashlight.slash")
     }
   }
 

@@ -5,7 +5,8 @@ import PackageDescription
 let package = Package(
   name: "ScannerUIKit",
   platforms: [
-    .iOS(.v12)
+    .iOS(.v13),
+    .macCatalyst(.v14)
   ],
   products: [
     .library(name: "ScannerUIKit", targets: ["ScannerUIKit"])

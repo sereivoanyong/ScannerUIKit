@@ -1,4 +1,5 @@
 {
+  "originHash" : "061a51d52db3f0a783ec89d0c711a6f1f8473dd6ff70546a06d8f2daefe7ceac",
   "pins" : [
     {
       "identity" : "emptyuikit",
@@ -6,9 +7,9 @@
       "location" : "https://github.com/sereivoanyong/EmptyUIKit",
       "state" : {
         "branch" : "main",
-        "revision" : "48f4ed028a07a8deaf7d225d9f2a2e35c5f5e447"
+        "revision" : "e64a346d557febe38c97135c630cb1423d5da464"
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }

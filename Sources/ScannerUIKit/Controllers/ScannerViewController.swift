@@ -83,9 +83,7 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   public override init(nibName: String? = nil, bundle: Bundle? = nil) {
     super.init(nibName: nibName, bundle: bundle)
 
-    if #available(iOS 13.0, *) {
-      overrideUserInterfaceStyle = .dark
-    }
+    overrideUserInterfaceStyle = .dark
   }
 
   public required init?(coder: NSCoder) {
@@ -103,11 +101,7 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   open override func viewDidLoad() {
     super.viewDidLoad()
 
-    if #available(iOS 13.0, *) {
-      view.backgroundColor = .systemBackground
-    } else {
-      view.backgroundColor = .black
-    }
+    view.backgroundColor = .systemBackground
 
     do {
       view.addLayoutGuide(contentLayoutGuide)
@@ -404,16 +398,16 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
       guard let error = error as? ScannerError else { return }
       switch error {
       case .accessRestricted:
-        emptyView.title = "Access Restricted"
+        emptyView.text = "Access Restricted"
         emptyView.button.setTitle("Open Settings", for: .normal)
       case .accessDenied:
-        emptyView.title = "Access Denied"
+        emptyView.text = "Access Denied"
         emptyView.button.setTitle("Open Settings", for: .normal)
       case .noVideoDevice:
-        emptyView.title = "No Camera"
+        emptyView.text = "No Camera"
       case .cannotCapture(let error):
-        emptyView.title = "Camera Not Available"
-        emptyView.message = error.localizedDescription
+        emptyView.text = "Camera Not Available"
+        emptyView.secondaryText = error.localizedDescription
       }
     }
   }
