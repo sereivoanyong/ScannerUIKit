@@ -22,7 +22,8 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
 
   public let session: AVCaptureSession = AVCaptureSession()
 
-  open private(set) var isSessionRunningOnMain: Bool = false
+  // Update on main queue
+  open private(set) var isSessionRunning: Bool = false
 
   private let metadataOutput = AVCaptureMetadataOutput()
 
@@ -298,7 +299,7 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   // MARK: Actions
 
   open func startRunningSession() {
-    isSessionRunningOnMain = true
+    isSessionRunning = true
     sessionQueue.async { [weak session] in
       session?.startRunning()
     }
@@ -308,7 +309,7 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   }
 
   open func stopRunningSession() {
-    isSessionRunningOnMain = false
+    isSessionRunning = false
     sessionQueue.async { [weak session] in
       session?.stopRunning()
     }
@@ -334,7 +335,7 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
 #endif
   }
 
-  open func didOutput(_ metadataObjects: [AVMetadataObject]) {
+  open func process(_ metadataObjects: [AVMetadataObject], continueHandler: @escaping () -> Void) {
   }
 
   @objc private func dismiss(_ sender: UIBarButtonItem) {
@@ -364,8 +365,11 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
       print("Metadata output output and processed \(metadataObjects.count)")
       DispatchQueue.main.async { [weak self] in
         guard let self else { return }
-        didOutput(metadataObjects)
-        metadataObjectsOutputSemaphore.signal()
+        process(metadataObjects) { [weak self] in
+          guard let self else { return }
+          startRunningSession()
+          metadataObjectsOutputSemaphore.signal()
+        }
       }
     case .timedOut:
 #if DEBUG
