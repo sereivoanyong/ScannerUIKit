@@ -92,9 +92,13 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   }
 
   deinit {
+    while metadataObjectsOutputSemaphore.signal() > 0 {
+    }
+#if DEBUG
     if type(of: self) == ScannerViewController.self {
       print("\(Self.self) deinit")
     }
+#endif
   }
 
   // MARK: View Lifecycle
@@ -359,15 +363,17 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   // MARK: - AVCaptureMetadataOutputObjectsDelegate
 
   open func metadataOutput(_ metadataOutput: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-    guard !metadataObjects.isEmpty else { return }
     switch metadataObjectsOutputSemaphore.wait(timeout: .now()) {
     case .success:
-      print("Metadata output output and processed \(metadataObjects.count)")
       DispatchQueue.main.async { [weak self] in
         guard let self else { return }
+        guard !metadataObjects.isEmpty else {
+          metadataObjectsOutputSemaphore.signal()
+          return
+        }
+        print("Metadata output output and processed \(metadataObjects.count)")
         process(metadataObjects) { [weak self] in
           guard let self else { return }
-          startRunningSession()
           metadataObjectsOutputSemaphore.signal()
         }
       }
