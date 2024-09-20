@@ -33,6 +33,8 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
 
   private let metadataObjectsOutputSemaphore = DispatchSemaphore(value: 1)
 
+  open var isProcessingMetadataObjects: Bool = false
+
   private var scannerView: ScannerView!
 
   open private(set) var scannerFrameConstraints: [NSLayoutConstraint] = []
@@ -92,8 +94,6 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
   }
 
   deinit {
-    while metadataObjectsOutputSemaphore.signal() > 0 {
-    }
 #if DEBUG
     if type(of: self) == ScannerViewController.self {
       print("\(Self.self) deinit")
@@ -339,7 +339,8 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
 #endif
   }
 
-  open func process(_ metadataObjects: [AVMetadataObject], continueHandler: @escaping () -> Void) {
+  /// Set `isProcessingMetadataObjects` to `true` after the process is complete.
+  open func process(_ metadataObjects: [AVMetadataObject]) {
   }
 
   @objc private func dismiss(_ sender: UIBarButtonItem) {
@@ -367,15 +368,11 @@ open class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjec
     case .success:
       DispatchQueue.main.async { [weak self] in
         guard let self else { return }
-        guard !metadataObjects.isEmpty else {
-          metadataObjectsOutputSemaphore.signal()
-          return
+        if !isProcessingMetadataObjects {
+          isProcessingMetadataObjects = true
+          process(metadataObjects)
         }
-        print("Metadata output output and processed \(metadataObjects.count)")
-        process(metadataObjects) { [weak self] in
-          guard let self else { return }
-          metadataObjectsOutputSemaphore.signal()
-        }
+        metadataObjectsOutputSemaphore.signal()
       }
     case .timedOut:
 #if DEBUG
